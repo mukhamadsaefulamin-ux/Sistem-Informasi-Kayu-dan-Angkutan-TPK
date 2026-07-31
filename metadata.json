@@ -1,0 +1,6 @@
+{
+  "name": "TPK Talok",
+  "description": "Sistem Informasi Manajemen Kayu TPK Talok dengan Dashboard Visual Interaktif, Laporan Bulanan, Integrasi Google Sheets, dan Modul Pendapatan",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

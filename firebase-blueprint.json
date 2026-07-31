@@ -1,0 +1,114 @@
+{
+  "entities": {
+    "Angkut": {
+      "title": "Angkut",
+      "description": "Catatan angkut harian",
+      "type": "object",
+      "properties": {
+        "tgl_angkut": { "type": "string" },
+        "kapling": { "type": "string" },
+        "blok": { "type": "string" },
+        "jenis": { "type": "string" },
+        "sortimen": { "type": "string" },
+        "panjang": { "type": "number" },
+        "diameter": { "type": "number" },
+        "mutu": { "type": "string" },
+        "batang": { "type": "number" },
+        "volume": { "type": "number" },
+        "tujuan": { "type": "string" },
+        "nopol": { "type": "string" },
+        "keterangan": { "type": "string" }
+      }
+    },
+    "Ketiga": {
+      "title": "Ketiga",
+      "description": "Kayu pihak ketiga",
+      "type": "object",
+      "properties": {
+        "tgl_kapling": { "type": "string" },
+        "kapling": { "type": "string" },
+        "blok": { "type": "string" },
+        "jenis": { "type": "string" },
+        "sortimen": { "type": "string" },
+        "panjang": { "type": "number" },
+        "diameter": { "type": "number" },
+        "mutu": { "type": "string" },
+        "batang": { "type": "number" },
+        "volume": { "type": "number" }
+      }
+    },
+    "Perhutani": {
+      "title": "Perhutani",
+      "description": "Kayu perhutani",
+      "type": "object",
+      "properties": {
+        "tgl_kapling": { "type": "string" },
+        "kapling": { "type": "string" },
+        "blok": { "type": "string" },
+        "jenis": { "type": "string" },
+        "sortimen": { "type": "string" },
+        "panjang": { "type": "number" },
+        "diameter": { "type": "number" },
+        "mutu": { "type": "string" },
+        "batang": { "type": "number" },
+        "volume": { "type": "number" }
+      }
+    },
+    "DKP": {
+      "title": "DKP",
+      "description": "Daftar Kayu Pengganti",
+      "type": "object",
+      "properties": {
+        "no_dkp": { "type": "string" },
+        "tanggal": { "type": "string" },
+        "kapling": { "type": "string" },
+        "blok": { "type": "string" },
+        "jenis": { "type": "string" },
+        "sortimen": { "type": "string" },
+        "panjang": { "type": "number" },
+        "diameter": { "type": "number" },
+        "mutu": { "type": "string" },
+        "batang": { "type": "number" },
+        "volume": { "type": "number" },
+        "petugas": { "type": "string" },
+        "status": { "type": "string" }
+      }
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Pendapatan Invoice",
+      "type": "object",
+      "properties": {
+        "tanggal": { "type": "string" },
+        "no_invoice": { "type": "string" },
+        "batang": { "type": "number" },
+        "volume": { "type": "number" },
+        "nominal": { "type": "number" },
+        "pembeli": { "type": "string" },
+        "status": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/angkut/{docId}": {
+      "schema": { "$ref": "#/entities/Angkut" },
+      "description": "Records for angkut"
+    },
+    "/ketiga/{docId}": {
+      "schema": { "$ref": "#/entities/Ketiga" },
+      "description": "Records for ketiga"
+    },
+    "/perhutani/{docId}": {
+      "schema": { "$ref": "#/entities/Perhutani" },
+      "description": "Records for perhutani"
+    },
+    "/dkp/{docId}": {
+      "schema": { "$ref": "#/entities/DKP" },
+      "description": "Records for dkp"
+    },
+    "/invoice/{docId}": {
+      "schema": { "$ref": "#/entities/Invoice" },
+      "description": "Records for invoice"
+    }
+  }
+}

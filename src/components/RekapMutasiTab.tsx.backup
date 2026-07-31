@@ -1,0 +1,483 @@
+import React, { useState, useMemo } from 'react';
+import { FileSpreadsheet, Plus, Download, Search, X, Edit2, Trash2, Calendar } from 'lucide-react';
+import { DataMutasi } from '../types';
+import { ConfirmModal } from './ConfirmModal';
+
+interface RekapMutasiTabProps {
+  userRole?: 'admin' | 'anggota' | null;
+  data: DataMutasi[];
+  onAddData: (item: Omit<DataMutasi, 'id'>) => void;
+  onUpdateData: (id: string, item: Omit<DataMutasi, 'id'>) => void;
+  onDeleteData: (id: string) => void;
+  onExportCSV: () => void;
+}
+
+export const RekapMutasiTab: React.FC<RekapMutasiTabProps> = ({
+  userRole,
+  data,
+  onAddData,
+  onUpdateData,
+  onDeleteData,
+  onExportCSV,
+}) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterMonth, setFilterMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formData, setFormData] = useState<any>({
+    tanggal: '01/07/2026 s/d 30/07/2026',
+    jenis: 'Jati',
+    ai_batang: '',
+    ai_volume: '',
+    aii_batang: '',
+    aii_volume: '',
+    aiii_batang: '',
+    aiii_volume: '',
+  });
+
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string | null; type: 'single' }>({
+    isOpen: false,
+    id: null,
+    type: 'single'
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsedData = {
+      ...formData,
+      ai_batang: parseInt(formData.ai_batang) || 0,
+      ai_volume: parseFloat(formData.ai_volume) || 0,
+      aii_batang: parseInt(formData.aii_batang) || 0,
+      aii_volume: parseFloat(formData.aii_volume) || 0,
+      aiii_batang: parseInt(formData.aiii_batang) || 0,
+      aiii_volume: parseFloat(formData.aiii_volume) || 0,
+    };
+    if (editingId) {
+      onUpdateData(editingId, parsedData);
+    } else {
+      onAddData(parsedData);
+    }
+    setIsModalOpen(false);
+    resetForm();
+  };
+
+  const handleEdit = (item: DataMutasi) => {
+    setFormData({
+      tanggal: item.tanggal,
+      jenis: item.jenis,
+      ai_batang: item.ai_batang || '',
+      ai_volume: item.ai_volume || '',
+      aii_batang: item.aii_batang || '',
+      aii_volume: item.aii_volume || '',
+      aiii_batang: item.aiii_batang || '',
+      aiii_volume: item.aiii_volume || '',
+    });
+    setEditingId(item.id);
+    setIsModalOpen(true);
+  };
+
+  const resetForm = () => {
+    setFormData({
+      tanggal: '01/07/2026 s/d 30/07/2026',
+      jenis: 'Jati',
+      ai_batang: '',
+      ai_volume: '',
+      aii_batang: '',
+      aii_volume: '',
+      aiii_batang: '',
+      aiii_volume: '',
+    });
+    setEditingId(null);
+  };
+
+
+  const getMonthFromTanggal = (t: string) => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t.substring(0, 7);
+    const match = t.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (match) {
+      return `${match[3]}-${match[2].padStart(2, '0')}`;
+    }
+    // Handle '1 s/d 30 Januari 2026'
+    const strMatch = t.match(/\d+\s+s\/d\s+\d+\s+([a-zA-Z]+)\s+(\d{4})/i);
+    if (strMatch) {
+      const mNames = ['januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'];
+      const mIdx = mNames.findIndex(m => m === strMatch[1].toLowerCase());
+      if (mIdx !== -1) return `${strMatch[2]}-${String(mIdx+1).padStart(2, '0')}`;
+    }
+    return '';
+  };
+
+  const filteredData = useMemo(() => {
+    return data.filter(item => {
+      const matchSearch = item.jenis.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchMonth = filterMonth ? getMonthFromTanggal(item.tanggal) === filterMonth : true;
+      return matchSearch && matchMonth;
+    }).sort((a, b) => {
+      const getSortTime = (t: string) => {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return new Date(t).getTime();
+        const m = getMonthFromTanggal(t);
+        if (m) return new Date(`${m}-01`).getTime();
+        return 0;
+      };
+      return getSortTime(b.tanggal) - getSortTime(a.tanggal);
+    });
+  }, [data, searchTerm, filterMonth]);
+
+  const isAdmin = userRole === 'admin';
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800">Rekap Mutasi Kapling</h2>
+          <p className="text-slate-500 mt-1">Kelola data rekap mutasi harian</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          <div className="relative">
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="month"
+              value={filterMonth}
+              onChange={(e) => setFilterMonth(e.target.value)}
+              className="pl-9 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm"
+            />
+          </div>
+          <div className="relative flex-1 md:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Cari jenis kayu..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm"
+            />
+          </div>
+          <button
+            onClick={onExportCSV}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl transition-colors font-medium text-sm"
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Export</span>
+          </button>
+          {isAdmin && (
+            <button
+              onClick={() => { resetForm(); setIsModalOpen(true); }}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all shadow-sm shadow-indigo-600/20 font-medium text-sm active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Tambah Data</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+              <tr>
+                <th className="px-4 py-3 border-r border-slate-200" rowSpan={2}>Tanggal</th>
+                <th className="px-4 py-3 border-r border-slate-200" rowSpan={2}>Bulan</th>
+                <th className="px-4 py-3 border-r border-slate-200" rowSpan={2}>Tahun</th>
+                <th className="px-4 py-3 border-r border-slate-200" rowSpan={2}>Jenis Kayu</th>
+                <th className="px-4 py-2 text-center border-b border-r border-slate-200" colSpan={2}>Sortimen AI</th>
+                <th className="px-4 py-2 text-center border-b border-r border-slate-200" colSpan={2}>Sortimen AII</th>
+                <th className="px-4 py-2 text-center border-b border-r border-slate-200" colSpan={2}>Sortimen AIII</th>
+                <th className="px-4 py-2 text-center border-b border-r border-slate-200" colSpan={2}>Jumlah</th>
+                {isAdmin && <th className="px-4 py-3 text-center" rowSpan={2}>Aksi</th>}
+              </tr>
+              <tr>
+                <th className="px-4 py-2 text-center border-r border-slate-200">Btg</th>
+                <th className="px-4 py-2 text-center border-r border-slate-200">Vol</th>
+                <th className="px-4 py-2 text-center border-r border-slate-200">Btg</th>
+                <th className="px-4 py-2 text-center border-r border-slate-200">Vol</th>
+                <th className="px-4 py-2 text-center border-r border-slate-200">Btg</th>
+                <th className="px-4 py-2 text-center border-r border-slate-200">Vol</th>
+                <th className="px-4 py-2 text-center border-r border-slate-200">Btg</th>
+                <th className="px-4 py-2 text-center border-r border-slate-200">Vol</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredData.length === 0 ? (
+                <tr>
+                  <td colSpan={13} className="px-4 py-8 text-center text-slate-500">
+                    Tidak ada data mutasi.
+                  </td>
+                </tr>
+              ) : (
+                filteredData.map((item) => {
+                  let tanggal = item.tanggal;
+                  let bulan = '-';
+                  let tahun = '-';
+
+                  if (/^\d{4}-\d{2}-\d{2}$/.test(item.tanggal)) {
+                    const dateObj = new Date(item.tanggal);
+                    tanggal = dateObj.getDate().toString().padStart(2, '0');
+                    bulan = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+                    tahun = dateObj.getFullYear().toString();
+                  } else if (item.tanggal.includes('s/d')) {
+                    // Coba parse 01/01/2026 s/d 30/01/2026
+                    const parts = item.tanggal.split('s/d').map(p => p.trim());
+                    if (parts.length === 2) {
+                      const p1 = parts[0].split('/');
+                      const p2 = parts[1].split('/');
+                      if (p1.length === 3 && p2.length === 3) {
+                        tanggal = `${p1[0]} s/d ${p2[0]}`;
+                        bulan = p1[1];
+                        tahun = p1[2];
+                      } else {
+                        // Check format "1 s/d 30 Januari 2026"
+                        const strMatch = item.tanggal.match(/(\d+)\s+s\/d\s+(\d+)\s+([a-zA-Z]+)\s+(\d{4})/i);
+                        if (strMatch) {
+                          tanggal = `${strMatch[1]} s/d ${strMatch[2]}`;
+                          bulan = strMatch[3];
+                          tahun = strMatch[4];
+                        } else {
+                          tanggal = item.tanggal;
+                        }
+                      }
+                    }
+                  } else {
+                    tanggal = item.tanggal;
+                  }
+                  const totBtg = (item.ai_batang||0) + (item.aii_batang||0) + (item.aiii_batang||0);
+                  const totVol = (item.ai_volume||0) + (item.aii_volume||0) + (item.aiii_volume||0);
+
+                  return (
+                    <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="px-4 py-3 border-r border-slate-100">{tanggal}</td>
+                      <td className="px-4 py-3 border-r border-slate-100">{bulan}</td>
+                      <td className="px-4 py-3 border-r border-slate-100">{tahun}</td>
+                      <td className="px-4 py-3 border-r border-slate-100 font-medium">{item.jenis}</td>
+                      <td className="px-4 py-3 text-center border-r border-slate-100">{item.ai_batang}</td>
+                      <td className="px-4 py-3 text-center border-r border-slate-100">{item.ai_volume?.toFixed(4)}</td>
+                      <td className="px-4 py-3 text-center border-r border-slate-100">{item.aii_batang}</td>
+                      <td className="px-4 py-3 text-center border-r border-slate-100">{item.aii_volume?.toFixed(4)}</td>
+                      <td className="px-4 py-3 text-center border-r border-slate-100">{item.aiii_batang}</td>
+                      <td className="px-4 py-3 text-center border-r border-slate-100">{item.aiii_volume?.toFixed(4)}</td>
+                      <td className="px-4 py-3 text-center border-r border-slate-100 font-semibold">{totBtg}</td>
+                      <td className="px-4 py-3 text-center border-r border-slate-100 font-semibold">{totVol.toFixed(4)}</td>
+                      {isAdmin && (
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => handleEdit(item)}
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Edit"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirm({ isOpen: true, id: item.id, type: 'single' })}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Hapus"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+            {filteredData.length > 0 && (
+              <tfoot className="bg-slate-50 font-bold border-t border-slate-200">
+                <tr>
+                  <td colSpan={4} className="px-4 py-3 text-right border-r border-slate-200">Total:</td>
+                  <td className="px-4 py-3 text-center border-r border-slate-200">
+                    {filteredData.reduce((sum, item) => sum + (item.ai_batang||0), 0)}
+                  </td>
+                  <td className="px-4 py-3 text-center border-r border-slate-200">
+                    {filteredData.reduce((sum, item) => sum + (item.ai_volume||0), 0).toFixed(4)}
+                  </td>
+                  <td className="px-4 py-3 text-center border-r border-slate-200">
+                    {filteredData.reduce((sum, item) => sum + (item.aii_batang||0), 0)}
+                  </td>
+                  <td className="px-4 py-3 text-center border-r border-slate-200">
+                    {filteredData.reduce((sum, item) => sum + (item.aii_volume||0), 0).toFixed(4)}
+                  </td>
+                  <td className="px-4 py-3 text-center border-r border-slate-200">
+                    {filteredData.reduce((sum, item) => sum + (item.aiii_batang||0), 0)}
+                  </td>
+                  <td className="px-4 py-3 text-center border-r border-slate-200">
+                    {filteredData.reduce((sum, item) => sum + (item.aiii_volume||0), 0).toFixed(4)}
+                  </td>
+                  <td className="px-4 py-3 text-center border-r border-slate-200 text-indigo-600">
+                    {filteredData.reduce((sum, item) => sum + (item.ai_batang||0) + (item.aii_batang||0) + (item.aiii_batang||0), 0)}
+                  </td>
+                  <td className="px-4 py-3 text-center border-r border-slate-200 text-indigo-600">
+                    {filteredData.reduce((sum, item) => sum + (item.ai_volume||0) + (item.aii_volume||0) + (item.aiii_volume||0), 0).toFixed(4)}
+                  </td>
+                  {isAdmin && <td className="px-4 py-3"></td>}
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
+            <div className="sticky top-0 bg-white px-6 py-4 border-b border-slate-100 flex items-center justify-between z-10">
+              <h3 className="text-lg font-bold text-slate-800">
+                {editingId ? 'Edit Data Mutasi' : 'Tambah Data Mutasi'}
+              </h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700">Tanggal</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      placeholder="Contoh: 01/01/2026 s/d 30/01/2026"
+                      value={formData.tanggal}
+                      onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
+                      className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                    />
+                    <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  </div>
+                  <p className="text-xs text-red-500 mt-1">Contoh: 1 s/d 30 Januari 2026 atau 01/01/2026 s/d 30/01/2026</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700">Jenis Kayu</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.jenis}
+                    onChange={(e) => setFormData({ ...formData, jenis: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* AI */}
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+                <h4 className="font-semibold text-slate-700">Sortimen AI</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-600">Batang</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.ai_batang}
+                      onChange={(e) => setFormData({ ...formData, ai_batang: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-600">Volume</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      min="0"
+                      value={formData.ai_volume}
+                      onChange={(e) => setFormData({ ...formData, ai_volume: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* AII */}
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+                <h4 className="font-semibold text-slate-700">Sortimen AII</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-600">Batang</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.aii_batang}
+                      onChange={(e) => setFormData({ ...formData, aii_batang: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-600">Volume</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      min="0"
+                      value={formData.aii_volume}
+                      onChange={(e) => setFormData({ ...formData, aii_volume: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* AIII */}
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+                <h4 className="font-semibold text-slate-700">Sortimen AIII</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-600">Batang</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.aiii_batang}
+                      onChange={(e) => setFormData({ ...formData, aiii_batang: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-600">Volume</label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      min="0"
+                      value={formData.aiii_volume}
+                      onChange={(e) => setFormData({ ...formData, aiii_volume: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all shadow-sm shadow-indigo-600/20"
+                >
+                  {editingId ? 'Simpan Perubahan' : 'Simpan Data'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirm.isOpen && (
+        <ConfirmModal
+          title="Hapus Data Mutasi"
+          message="Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat dibatalkan."
+          onConfirm={() => {
+            if (deleteConfirm.type === 'single' && deleteConfirm.id) {
+              onDeleteData(deleteConfirm.id);
+            }
+            setDeleteConfirm({ isOpen: false, id: null, type: 'single' });
+          }}
+          onCancel={() => setDeleteConfirm({ isOpen: false, id: null, type: 'single' })}
+        />
+      )}
+    </div>
+  );
+};
